@@ -101,6 +101,25 @@ int rw5100_open(rw5100_t *rw, libusb_context *ctx, uint8_t bus, uint8_t addr)
 	return RW5100_OK;
 }
 
+int rw5100_recover(rw5100_t *rw)
+{
+	int r;
+
+	if (!rw->dev)
+		return RW5100_ERR_USB;
+	libusb_release_interface(rw->dev, 0);
+	r = libusb_reset_device(rw->dev);
+	if (r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_NOT_FOUND)
+		return RW5100_ERR_NODEV; /* 抜かれたか、別の機器として出直した */
+	if (r != 0)
+		return RW5100_ERR_USB;
+	if (libusb_claim_interface(rw->dev, 0) != 0)
+		return RW5100_ERR_USB;
+	rw->seq = 0;
+	drain(rw);
+	return rw5100_init(rw, NULL, 0);
+}
+
 void rw5100_close(rw5100_t *rw)
 {
 	if (!rw->dev)

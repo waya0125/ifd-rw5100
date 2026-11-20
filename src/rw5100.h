@@ -70,6 +70,10 @@ int rw5100_command(rw5100_t *rw, uint8_t cmd, const uint8_t *data, size_t len,
 /* APDU を送ってレスポンスを受け取る。 */
 int rw5100_apdu(rw5100_t *rw, const uint8_t *apdu, size_t len, rw5100_reply_t *reply);
 
+/* リーダーが返事をしなくなった時に立て直す。USB をリセットして開き直し、初期化し直す。
+ * 公式ドライバーも、返事が来ない時は USB をリセットしていた。 */
+int rw5100_recover(rw5100_t *rw);
+
 /* 接続直後の手順（公式ドライバーと同じ: C0, 31, D0, 41, D0, 41）。version は NULL 可。 */
 int rw5100_init(rw5100_t *rw, char *version, size_t version_size);
 

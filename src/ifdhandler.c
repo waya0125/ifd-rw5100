@@ -48,6 +48,18 @@ static reader_t *get_reader(DWORD Lun)
 	return &readers[idx];
 }
 
+/* 返事が来なかった時は立て直す。rd->lock を持った状態で呼ぶ。 */
+static void maybe_recover(reader_t *rd, int r)
+{
+	int rr;
+
+	if (r != RW5100_ERR_TIMEOUT)
+		return;
+	rd->atr_len = 0;
+	rr = rw5100_recover(&rd->rw);
+	LOG("返事が来ないので USB をリセットして立て直した: %s", rw5100_strerror(rr));
+}
+
 static RESPONSECODE to_ifd(int r)
 {
 	switch (r) {
@@ -235,6 +247,7 @@ RESPONSECODE IFDHPowerICC(DWORD Lun, DWORD Action, PUCHAR Atr, PDWORD AtrLength)
 		r = rw5100_power_on(&rd->rw,
 				    (Action == IFD_RESET && rd->atr_len) ? RW5100_POWER_WARM : RW5100_POWER_COLD,
 				    atr, &len);
+		maybe_recover(rd, r);
 		if (r != RW5100_OK || len > MAX_ATR_SIZE) {
 			rd->atr_len = 0;
 			*AtrLength = 0;
@@ -279,6 +292,7 @@ RESPONSECODE IFDHTransmitToICC(DWORD Lun, SCARD_IO_HEADER SendPci, PUCHAR TxBuff
 		return IFD_ICC_NOT_PRESENT;
 	}
 	r = rw5100_apdu(&rd->rw, TxBuffer, TxLength, &rep);
+	maybe_recover(rd, r);
 	pthread_mutex_unlock(&rd->lock);
 
 	if (r != RW5100_OK) {
@@ -322,6 +336,7 @@ RESPONSECODE IFDHICCPresence(DWORD Lun)
 	r = rw5100_status(&rd->rw, &st, &state);
 	if (r == RW5100_OK && !(st & RW5100_STATUS_PRESENT))
 		rd->atr_len = 0;
+	maybe_recover(rd, r);
 	pthread_mutex_unlock(&rd->lock);
 
 	if (r != RW5100_OK)
