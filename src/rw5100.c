@@ -171,8 +171,6 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 			need = 3 + (size_t)in[2] + 1;
 		if (need && have >= need)
 			break;
-		if (got < PACKET && have >= 3 && have < need)
-			continue; /* 続きの転送を待つ */
 	}
 	dump(rw, "<<", in, have);
 
@@ -182,8 +180,21 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 		return RW5100_ERR_CHECK;
 	if (in[0] != type_in)
 		return RW5100_ERR_FRAME;
-	if (in[1] != seq)
+	/* 通し番号の場所に 0x80 が立った返事は、リーダーが枠を受け付けなかった印。
+	 * このときリーダーは通し番号を進めないので、こちらも戻す。 */
+	if (in[1] & 0x80) {
+		rw->seq = seq;
+		rw->last_reject = in[1];
+		fprintf(stderr, "rw5100: リーダーが受け付けなかった: 送った %02X %02X %02X、返事 %02X %02X %02X\n",
+			out[0], out[1], out[2], in[0], in[1], in[2]);
+		return RW5100_ERR_REJECT;
+	}
+	if (in[1] != seq) {
+		/* 中身（鍵などが入りうる）は出さず、枠の頭だけを出す */
+		fprintf(stderr, "rw5100: 通し番号が合わない: 送った %02X %02X %02X（%zu バイト）、返事 %02X %02X %02X（%zu バイト）\n",
+			out[0], out[1], out[2], olen, in[0], in[1], in[2], need);
 		return RW5100_ERR_SEQ;
+	}
 	*in_len = need;
 	return RW5100_OK;
 }
@@ -223,7 +234,12 @@ int rw5100_apdu(rw5100_t *rw, const uint8_t *apdu, size_t len, rw5100_reply_t *r
 	size_t in_len = 0;
 	int r;
 
-	r = exchange(rw, FRAME_APDU_OUT, FRAME_APDU_IN, apdu, len, in, &in_len);
+	uint8_t buf[RW5100_MAX_FRAME];
+
+	if (len > sizeof(buf))
+		return RW5100_ERR_ARG;
+	memcpy(buf, apdu, len);
+	r = exchange(rw, FRAME_APDU_OUT, FRAME_APDU_IN, buf, len, in, &in_len);
 	if (r != RW5100_OK)
 		return r;
 	reply->state = 0;
@@ -335,6 +351,7 @@ const char *rw5100_strerror(int err)
 	case RW5100_ERR_ARG:    return "引数が大きすぎる";
 	case RW5100_ERR_NODEV:  return "機器が抜かれた";
 	case RW5100_ERR_TIMEOUT: return "返事が来ない";
+	case RW5100_ERR_REJECT: return "リーダーが受け付けなかった";
 	default:                return "不明なエラー";
 	}
 }

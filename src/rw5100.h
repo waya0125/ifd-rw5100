@@ -40,6 +40,7 @@ typedef struct rw5100 {
 	uint8_t seq;          /* 次に使う通し番号（0x00 か 0x40） */
 	unsigned timeout_ms;
 	int debug;            /* 0 以外なら送受信を stderr に出す */
+	uint8_t last_reject;  /* 最後に受け付けなかった時の印（0x80 以上） */
 } rw5100_t;
 
 /* 返事の解釈結果 */
@@ -58,6 +59,7 @@ typedef struct rw5100_reply {
 #define RW5100_ERR_ARG    -5
 #define RW5100_ERR_NODEV  -6 /* 機器が抜かれた */
 #define RW5100_ERR_TIMEOUT -7
+#define RW5100_ERR_REJECT -8 /* リーダーが枠を受け付けなかった（返事の通し番号の場所に 0x80） */
 
 /* 開く。bus と addr が 0 なら最初に見つかった RW-5100 を開く。 */
 int rw5100_open(rw5100_t *rw, libusb_context *ctx, uint8_t bus, uint8_t addr);
