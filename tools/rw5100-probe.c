@@ -9,6 +9,7 @@
  * 使い方: rw5100-probe [-v] [-w 秒]
  *   -v  送受信した枠を表示する
  *   -w  指定した秒数、カードの状態を 0.5 秒ごとに見て、変化を表示する
+ *   -r  ATR を読んだあと、ウォームリセット（D1 03）をして ATR を読み直す
  */
 #include "rw5100.h"
 
@@ -47,14 +48,15 @@ int main(int argc, char **argv)
 	uint8_t st = 0, state = 0, last = 0xFF;
 	uint8_t atr[64];
 	size_t atr_len = 0;
-	int opt, r, watch = 0, debug = 0;
+	int opt, r, watch = 0, debug = 0, warm = 0;
 
-	while ((opt = getopt(argc, argv, "vw:")) != -1) {
+	while ((opt = getopt(argc, argv, "vw:r")) != -1) {
 		switch (opt) {
 		case 'v': debug = 1; break;
 		case 'w': watch = atoi(optarg); break;
+		case 'r': warm = 1; break;
 		default:
-			fprintf(stderr, "使い方: %s [-v] [-w 秒]\n", argv[0]);
+			fprintf(stderr, "使い方: %s [-v] [-w 秒] [-r]\n", argv[0]);
 			return 2;
 		}
 	}
@@ -88,12 +90,21 @@ int main(int argc, char **argv)
 			stamp();
 			printf("状態: %02X（%s）、状態バイト %02X\n", st, status_name(st), state);
 			if ((st & RW5100_STATUS_PRESENT) && !(last != 0xFF && (last & RW5100_STATUS_PRESENT))) {
-				r = rw5100_power_on(&rw, atr, &atr_len);
+				r = rw5100_power_on(&rw, RW5100_POWER_COLD, atr, &atr_len);
 				stamp();
 				if (r == RW5100_OK)
 					print_atr(atr, atr_len);
 				else
 					printf("ATR を読めない: %s\n", rw5100_strerror(r));
+				if (r == RW5100_OK && warm) {
+					r = rw5100_power_on(&rw, RW5100_POWER_WARM, atr, &atr_len);
+					stamp();
+					printf("ウォームリセット: ");
+					if (r == RW5100_OK)
+						print_atr(atr, atr_len);
+					else
+						printf("失敗: %s\n", rw5100_strerror(r));
+				}
 			}
 			last = st;
 		}

@@ -254,14 +254,13 @@ int rw5100_status(rw5100_t *rw, uint8_t *status, uint8_t *state)
 	return RW5100_OK;
 }
 
-int rw5100_power_on(rw5100_t *rw, uint8_t *atr, size_t *atr_len)
+int rw5100_power_on(rw5100_t *rw, uint8_t mode, uint8_t *atr, size_t *atr_len)
 {
-	static const uint8_t on[] = { 0x00 };
 	static const uint8_t get_atr[] = { 0x0A, 0x00 };
 	rw5100_reply_t rep;
 	int r;
 
-	r = rw5100_command(rw, RW5100_CMD_POWER_ON, on, sizeof(on), &rep);
+	r = rw5100_command(rw, RW5100_CMD_POWER_ON, &mode, 1, &rep);
 	if (r != RW5100_OK)
 		return r;
 	r = rw5100_command(rw, RW5100_CMD_GET_ATR, get_atr, sizeof(get_atr), &rep);

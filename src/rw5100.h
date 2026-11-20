@@ -76,8 +76,12 @@ int rw5100_init(rw5100_t *rw, char *version, size_t version_size);
 /* カードの状態を聞く。*status に 31 の返事、*state に状態バイトを入れる。 */
 int rw5100_status(rw5100_t *rw, uint8_t *status, uint8_t *state);
 
-/* カードの電源を入れて ATR を読む。atr は 36 バイト以上。*atr_len に ATR の長さ。 */
-int rw5100_power_on(rw5100_t *rw, uint8_t *atr, size_t *atr_len);
+/* D1 の引数（公式ドライバーの動きから。docs/protocol.md） */
+#define RW5100_POWER_COLD 0x00 /* 電源投入（PC/SC の接続、電源を切ってからのつなぎ直し） */
+#define RW5100_POWER_WARM 0x03 /* ウォームリセット（PC/SC のリセット） */
+
+/* カードの電源を入れて（またはリセットして）ATR を読む。atr は 36 バイト以上。*atr_len に ATR の長さ。 */
+int rw5100_power_on(rw5100_t *rw, uint8_t mode, uint8_t *atr, size_t *atr_len);
 
 /* ATR の構造から長さを求める（後ろの 00 埋めを取り除くため）。分からなければ 0。 */
 size_t rw5100_atr_length(const uint8_t *buf, size_t max);

@@ -224,14 +224,17 @@ RESPONSECODE IFDHPowerICC(DWORD Lun, DWORD Action, PUCHAR Atr, PDWORD AtrLength)
 	pthread_mutex_lock(&rd->lock);
 	switch (Action) {
 	case IFD_POWER_DOWN:
-		/* 電源を切る命令は分かっていない。持っている ATR だけ捨てる。 */
+		/* 公式ドライバーも電源を切る命令は送らない。持っている ATR だけ捨てる。 */
 		rd->atr_len = 0;
 		*AtrLength = 0;
 		pthread_mutex_unlock(&rd->lock);
 		return IFD_SUCCESS;
 	case IFD_POWER_UP:
 	case IFD_RESET:
-		r = rw5100_power_on(&rd->rw, atr, &len);
+		/* 電源が入っていない時のリセットは、電源投入として扱う */
+		r = rw5100_power_on(&rd->rw,
+				    (Action == IFD_RESET && rd->atr_len) ? RW5100_POWER_WARM : RW5100_POWER_COLD,
+				    atr, &len);
 		if (r != RW5100_OK || len > MAX_ATR_SIZE) {
 			rd->atr_len = 0;
 			*AtrLength = 0;
