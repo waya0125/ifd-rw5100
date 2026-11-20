@@ -56,6 +56,8 @@ typedef struct rw5100_reply {
 #define RW5100_ERR_CHECK  -3
 #define RW5100_ERR_SEQ    -4
 #define RW5100_ERR_ARG    -5
+#define RW5100_ERR_NODEV  -6 /* 機器が抜かれた */
+#define RW5100_ERR_TIMEOUT -7
 
 /* 開く。bus と addr が 0 なら最初に見つかった RW-5100 を開く。 */
 int rw5100_open(rw5100_t *rw, libusb_context *ctx, uint8_t bus, uint8_t addr);

@@ -1,0 +1,6 @@
+# ifd-rw5100: pcscd（ユーザー pcscd）が SHARP RW-5100 を開けるようにする
+ACTION!="add", GOTO="ifd_rw5100_end"
+SUBSYSTEM!="usb", GOTO="ifd_rw5100_end"
+ENV{DEVTYPE}!="usb_device", GOTO="ifd_rw5100_end"
+ATTRS{idVendor}=="04dd", ATTRS{idProduct}=="9259", GROUP="pcscd"
+LABEL="ifd_rw5100_end"

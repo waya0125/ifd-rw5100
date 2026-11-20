@@ -29,6 +29,15 @@ static void dump(const rw5100_t *rw, const char *dir, const uint8_t *buf, size_t
 	fputc('\n', stderr);
 }
 
+static int usb_err(int r)
+{
+	if (r == LIBUSB_ERROR_NO_DEVICE)
+		return RW5100_ERR_NODEV;
+	if (r == LIBUSB_ERROR_TIMEOUT)
+		return RW5100_ERR_TIMEOUT;
+	return RW5100_ERR_USB;
+}
+
 static uint8_t xor_sum(const uint8_t *buf, size_t len)
 {
 	uint8_t x = 0;
@@ -126,7 +135,9 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 
 	dump(rw, ">>", out, olen);
 	r = libusb_bulk_transfer(rw->dev, EP_OUT, out, (int)olen, &got, rw->timeout_ms);
-	if (r != 0 || (size_t)got != olen)
+	if (r != 0)
+		return usb_err(r);
+	if ((size_t)got != olen)
 		return RW5100_ERR_USB;
 
 	for (;;) {
@@ -135,7 +146,7 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 			return RW5100_ERR_FRAME;
 		r = libusb_bulk_transfer(rw->dev, EP_IN, in + have, PACKET, &got, rw->timeout_ms);
 		if (r != 0)
-			return RW5100_ERR_USB;
+			return usb_err(r);
 		have += (size_t)got;
 		if (have >= 3)
 			need = 3 + (size_t)in[2] + 1;
@@ -304,6 +315,8 @@ const char *rw5100_strerror(int err)
 	case RW5100_ERR_CHECK:  return "返事のチェックサムが合わない";
 	case RW5100_ERR_SEQ:    return "返事の通し番号が合わない";
 	case RW5100_ERR_ARG:    return "引数が大きすぎる";
+	case RW5100_ERR_NODEV:  return "機器が抜かれた";
+	case RW5100_ERR_TIMEOUT: return "返事が来ない";
 	default:                return "不明なエラー";
 	}
 }

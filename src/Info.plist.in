@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>English</string>
+	<key>CFBundleExecutable</key>
+	<string>libifd-rw5100.so</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.github.waya0125.ifd-rw5100</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>ifd-rw5100</string>
+	<key>CFBundlePackageType</key>
+	<string>BNDL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>ifdCapabilities</key>
+	<string>0x00000000</string>
+	<key>ifdProtocolSupport</key>
+	<string>0x00000001</string>
+	<key>ifdVersionNumber</key>
+	<string>0x00000001</string>
+	<key>ifdManufacturerString</key>
+	<string>ifd-rw5100 (https://github.com/waya0125/ifd-rw5100)</string>
+	<key>ifdProductString</key>
+	<string>SHARP RW-5100 driver</string>
+	<key>ifdVendorID</key>
+	<array>
+		<string>0x04DD</string>
+	</array>
+	<key>ifdProductID</key>
+	<array>
+		<string>0x9259</string>
+	</array>
+	<key>ifdFriendlyName</key>
+	<array>
+		<string>SHARP RW-5100</string>
+	</array>
+</dict>
+</plist>
