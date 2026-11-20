@@ -115,7 +115,8 @@ int rw5100_recover(rw5100_t *rw)
 		return RW5100_ERR_USB;
 	if (libusb_claim_interface(rw->dev, 0) != 0)
 		return RW5100_ERR_USB;
-	rw->seq = 0;
+	rw->cmd_seq = 0;
+	rw->apdu_seq = 0;
 	drain(rw);
 	return rw5100_init(rw, NULL, 0);
 }
@@ -130,12 +131,12 @@ void rw5100_close(rw5100_t *rw)
 }
 
 /* 枠を送って返事の枠を受け取る。payload は送る枠の中身（長さの後ろからチェックサムの手前まで）。 */
-static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
+static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in, uint8_t *seqp,
 		    const uint8_t *payload, size_t plen, uint8_t *in, size_t *in_len)
 {
 	uint8_t out[RW5100_MAX_FRAME];
 	size_t olen = 0, have = 0, need = 0;
-	uint8_t seq = rw->seq;
+	uint8_t seq = *seqp;
 	int got, r;
 
 	if (plen > 0xFF || plen + 4 > sizeof(out))
@@ -150,7 +151,7 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 	olen++;
 
 	/* 通し番号は送ったら進める（返事が壊れていても、リーダーは受け取っている） */
-	rw->seq ^= 0x40;
+	*seqp ^= 0x40;
 
 	dump(rw, ">>", out, olen);
 	r = libusb_bulk_transfer(rw->dev, EP_OUT, out, (int)olen, &got, rw->timeout_ms);
@@ -183,7 +184,7 @@ static int exchange(rw5100_t *rw, uint8_t type_out, uint8_t type_in,
 	/* 通し番号の場所に 0x80 が立った返事は、リーダーが枠を受け付けなかった印。
 	 * このときリーダーは通し番号を進めないので、こちらも戻す。 */
 	if (in[1] & 0x80) {
-		rw->seq = seq;
+		*seqp = seq;
 		rw->last_reject = in[1];
 		fprintf(stderr, "rw5100: リーダーが受け付けなかった: 送った %02X %02X %02X、返事 %02X %02X %02X\n",
 			out[0], out[1], out[2], in[0], in[1], in[2]);
@@ -214,7 +215,7 @@ int rw5100_command(rw5100_t *rw, uint8_t cmd, const uint8_t *data, size_t len,
 	if (len)
 		memcpy(payload + 2, data, len);
 
-	r = exchange(rw, FRAME_CMD_OUT, FRAME_CMD_IN, payload, len + 2, in, &in_len);
+	r = exchange(rw, FRAME_CMD_OUT, FRAME_CMD_IN, &rw->cmd_seq, payload, len + 2, in, &in_len);
 	if (r != RW5100_OK)
 		return r;
 
@@ -239,7 +240,7 @@ int rw5100_apdu(rw5100_t *rw, const uint8_t *apdu, size_t len, rw5100_reply_t *r
 	if (len > sizeof(buf))
 		return RW5100_ERR_ARG;
 	memcpy(buf, apdu, len);
-	r = exchange(rw, FRAME_APDU_OUT, FRAME_APDU_IN, buf, len, in, &in_len);
+	r = exchange(rw, FRAME_APDU_OUT, FRAME_APDU_IN, &rw->apdu_seq, buf, len, in, &in_len);
 	if (r != RW5100_OK)
 		return r;
 	reply->state = 0;
@@ -298,6 +299,7 @@ int rw5100_power_on(rw5100_t *rw, uint8_t mode, uint8_t *atr, size_t *atr_len)
 	r = rw5100_command(rw, RW5100_CMD_POWER_ON, &mode, 1, &rep);
 	if (r != RW5100_OK)
 		return r;
+	rw->apdu_seq = 0;
 	r = rw5100_command(rw, RW5100_CMD_GET_ATR, get_atr, sizeof(get_atr), &rep);
 	if (r != RW5100_OK)
 		return r;

@@ -37,7 +37,8 @@
 typedef struct rw5100 {
 	libusb_context *ctx;
 	libusb_device_handle *dev;
-	uint8_t seq;          /* 次に使う通し番号（0x00 か 0x40） */
+	uint8_t cmd_seq;      /* 命令（12/21）の通し番号（0x00 か 0x40） */
+	uint8_t apdu_seq;     /* APDU（52/25）の通し番号（0x00 か 0x40） */
 	unsigned timeout_ms;
 	int debug;            /* 0 以外なら送受信を stderr に出す */
 	uint8_t last_reject;  /* 最後に受け付けなかった時の印（0x80 以上） */
